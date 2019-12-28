@@ -24,6 +24,8 @@ namespace Test//ANN
             net.layers[0].SetActivateFunction(new NN.ActivateFunction.ReLU());
             net.layers[1].SetActivateFunction(new NN.ActivateFunction.ReLU());
             net.layers[2].SetActivateFunction(new NN.ActivateFunction.Linear());
+            //理想的設定方式
+            //net.layers[0].SetActivateFunction(NN.ActivateFunction.Linear);
             //預計用委派 或單例模式
             //singleton 單例模式
             //net.layers[3].SetActivateFunction(NN.ActivateFunction.ReLU);
@@ -415,16 +417,16 @@ namespace NeuroNetwork
     public class ActivateFunction
     {
 
-        public class Sigmond : IActivateFunction
+        public class Sigmoid : IActivateFunction
         {
-            //static Sigmond instance;
+            //static Sigmoid instance;
             ////private Sigmond()
             ////{
 
             ////}
-            //public static Sigmond Instance
+            //public static Sigmoid Instance
             //{
-            //    get { return instance = Instance ?? new Sigmond(); }            
+            //    get { return instance = Instance ?? new Sigmoid(); }            
             //}
             public static double Output(double x)
             {
@@ -432,7 +434,7 @@ namespace NeuroNetwork
             }
             public static double Derivative(double x)
             {
-                x = Sigmond.Output(x);
+                x = Sigmoid.Output(x);
                 return x * (1 - x);
             }
             double IActivateFunction.Derivative(double x)
