@@ -4,7 +4,8 @@ using System.Linq;
 
 namespace Test//ANN
 {
-    using NN = NeuroNetwork;
+    using NN= NeuroNetwork;
+    using ANN = NeuroNetwork;
     class Program
     {
         static void Main(string[] args)
@@ -12,8 +13,9 @@ namespace Test//ANN
             Console.WriteLine("Hello World!");
 
             //建立網路
-            NN.Network net = new NN.Network(new NN.RegularizationFunction.None(), new NN.ErrorFunction.MSE());
-
+            NN.Network net = new NN.Network();
+            net.regularizationFunctionType = NN.RegularizationFunctionType.None;
+            net.errorFunctionType = NN.ErrorFunctionType.MSE;
             //建立輸入層(2個神經元)
             net.AddLayer(new NN.Layer.InputLayer(2));
             //建立隱藏層(2個神經元)
@@ -21,14 +23,9 @@ namespace Test//ANN
             //建立輸出層(1個神經元)
             net.AddLayer(new NN.Layer.FullyConnectLayer(1));
             //設定網路使用的激勵函數
-            net.layers[0].SetActivateFunction(new NN.ActivateFunction.ReLU());
-            net.layers[1].SetActivateFunction(new NN.ActivateFunction.ReLU());
-            net.layers[2].SetActivateFunction(new NN.ActivateFunction.Linear());
-            //理想的設定方式
-            //net.layers[0].SetActivateFunction(NN.ActivateFunction.Linear);
-            //預計用委派 或單例模式
-            //singleton 單例模式
-            //net.layers[3].SetActivateFunction(NN.ActivateFunction.ReLU);
+            net.layers[0].activateFunction = NN.ActivateFunctionType.ReLU;
+            net.layers[1].activateFunction = NN.ActivateFunctionType.ReLU;
+            net.layers[2].activateFunction = NN.ActivateFunctionType.Linear;
             #region Xor訓練資料
             for (int i = 0; i <= 1; i++)
             {
@@ -81,7 +78,7 @@ namespace NeuroNetwork
             //累積誤差的數量
             numAccumulatedDers;
         Random rdm;
-        public IActivateFunction activateFunction;
+        internal IActivateFunction activateFunction;
         public Neuron(int n)
         {
             input = new double[n];
@@ -125,13 +122,33 @@ namespace NeuroNetwork
     public abstract class Layer
     {
         public Neuron[] neurons;//此層的神經元數量
-        //public IActivateFunction activateFunction;
-        public void SetActivateFunction(IActivateFunction activatefunction)
+        public ActivateFunctionType activateFunction
         {
-            for (int i = 0; i < neurons.Length; i++)
+            set
             {
-                neurons[i].activateFunction = activatefunction;
+                switch (value)
+                {
+                    case ActivateFunctionType.Linear:
+                        neurons.Select(x => x.activateFunction = new ActivateFunction.Linear()); ;
+                        break;
+                    case ActivateFunctionType.Sigmoid:
+                        neurons.Select(x => x.activateFunction = new ActivateFunction.Sigmoid()); ;
+                        break;
+                    case ActivateFunctionType.ReLU:
+                        neurons.Select(x => x.activateFunction = new ActivateFunction.ReLU()); ;
+                        break;
+                    case ActivateFunctionType.LeakyReLU:
+                        neurons.Select(x => x.activateFunction = new ActivateFunction.LeakyReLU()); ;
+                        break;
+                    default:
+                        break;
+                }
             }
+        }
+        public Layer(int n, ActivateFunctionType activateFunction)
+        {
+            neurons = new Neuron[n];
+            this.activateFunction = activateFunction;
         }
         public Layer(int n)
         {
@@ -218,25 +235,54 @@ namespace NeuroNetwork
 
         }
     }
-
     public class Network
     {
         public List<Layer> layers;//此網路的層數
         public List<List<List<double>>> TrainData;
         public List<List<List<double>>> TestData;
-        public IRegularizationFunction regularizationFunction;
-        public IErrorFunction errorFunction;
-        public Network(IRegularizationFunction rf, IErrorFunction ef)
+
+        public RegularizationFunctionType regularizationFunctionType
         {
-            regularizationFunction = rf;
-            errorFunction = ef;
-            layers = new List<Layer>();
-            TrainData = new List<List<List<double>>>();
+            set
+            {
+                switch (value)
+                {
+                    case RegularizationFunctionType.None:
+                        regularizationFunction = new RegularizationFunction.None();
+                        break;
+                    case RegularizationFunctionType.L1:
+                        regularizationFunction = new RegularizationFunction.L1();
+                        break;
+                    case RegularizationFunctionType.L2:
+                        regularizationFunction = new RegularizationFunction.L2();
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
+        public ErrorFunctionType errorFunctionType
+        {
+            set
+            {
+                switch (value)
+                {
+                    case ErrorFunctionType.MSE:
+                        errorFunction = new ErrorFunction.MSE();
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        private IRegularizationFunction regularizationFunction;
+        private IErrorFunction errorFunction;
         public Network()
         {
             layers = new List<Layer>();
             TrainData = new List<List<List<double>>>();
+            regularizationFunctionType = RegularizationFunctionType.None;
+            errorFunctionType = ErrorFunctionType.MSE;
         }
         public void AddLayer(Layer layer)
         {
@@ -408,26 +454,31 @@ namespace NeuroNetwork
 
     }
 
-    public interface IActivateFunction
+
+    public enum ActivateFunctionType { Linear, Sigmoid, ReLU, LeakyReLU };
+    internal interface IActivateFunction
     {
         double Output(double x);
         double Derivative(double x);
 
     }
-    public class ActivateFunction
+    internal class ActivateFunction
     {
-
         public class Sigmoid : IActivateFunction
         {
-            //static Sigmoid instance;
-            ////private Sigmond()
-            ////{
+            #region Singleton
+            private static Sigmoid instance = null;
+            public static Sigmoid Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new Sigmoid());
+                }
+            }
+            internal Sigmoid() { }
+            #endregion
 
-            ////}
-            //public static Sigmoid Instance
-            //{
-            //    get { return instance = Instance ?? new Sigmoid(); }            
-            //}
+
             public static double Output(double x)
             {
                 return 1.0 / (1.0 + Math.Exp(-x));
@@ -448,6 +499,18 @@ namespace NeuroNetwork
         }
         public class ReLU : IActivateFunction
         {
+            #region Singleton
+            private static ReLU instance = null;
+            public static ReLU Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new ReLU());
+                }
+            }
+            internal ReLU() { }
+            #endregion
+
             public static double Output(double x)
             {
                 return Math.Max(0, x);
@@ -465,9 +528,19 @@ namespace NeuroNetwork
                 return Output(x);
             }
         }
-
         public class LeakyReLU : IActivateFunction
         {
+            #region Singleton
+            private static LeakyReLU instance = null;
+            public static LeakyReLU Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new LeakyReLU());
+                }
+            }
+            internal LeakyReLU() { }
+            #endregion
             public static double Output(double x)
             {
                 return Math.Max(0.01 * x, x);
@@ -485,9 +558,19 @@ namespace NeuroNetwork
                 return Output(x);
             }
         }
-
         public class Linear : IActivateFunction
         {
+            #region Singleton
+            private static Linear instance = null;
+            public static Linear Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new Linear());
+                }
+            }
+            internal Linear() { }
+            #endregion
             public static double Output(double x)
             {
                 return x;
@@ -506,15 +589,30 @@ namespace NeuroNetwork
             }
         }
     }
-    public interface IErrorFunction
+
+
+    public enum ErrorFunctionType { MSE };
+    internal interface IErrorFunction
     {
         double Error(double output, double target);
         double Derivative(double output, double target);
     }
-    public class ErrorFunction
+    internal class ErrorFunction
     {
+
         public class MSE : IErrorFunction
         {
+            #region Singleton
+            private static MSE instance = null;
+            public static MSE Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new MSE());
+                }
+            }
+            internal MSE() { }
+            #endregion
             public static double Error(double output, double target)
             {
                 return 0.5 * Math.Pow(output - target, 2);
@@ -533,15 +631,29 @@ namespace NeuroNetwork
             }
         }
     }
-    public interface IRegularizationFunction
+
+
+    public enum RegularizationFunctionType { None, L1, L2 };
+    internal interface IRegularizationFunction
     {
         double Output(double w);
         double Derivative(double w);
     }
-    public class RegularizationFunction
+    internal class RegularizationFunction
     {
         public class None : IRegularizationFunction
         {
+            #region Singleton
+            private static None instance = null;
+            public static None Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new None());
+                }
+            }
+            internal None() { }
+            #endregion
             public static double Output(double w)
             {
                 return w;
@@ -561,6 +673,17 @@ namespace NeuroNetwork
         }
         public class L1 : IRegularizationFunction
         {
+            #region Singleton
+            private static L1 instance = null;
+            public static L1 Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new L1());
+                }
+            }
+            internal L1() { }
+            #endregion
             public static double Output(double w)
             {
                 return Math.Abs(w);
@@ -580,6 +703,17 @@ namespace NeuroNetwork
         }
         public class L2 : IRegularizationFunction
         {
+            #region Singleton
+            private static L2 instance = null;
+            public static L2 Instance
+            {
+                get
+                {
+                    return instance ?? (instance = new L2());
+                }
+            }
+            internal L2() { }
+            #endregion
             public static double Output(double w)
             {
                 return 0.5 * w * w;
@@ -598,4 +732,5 @@ namespace NeuroNetwork
             }
         }
     }
+
 }
