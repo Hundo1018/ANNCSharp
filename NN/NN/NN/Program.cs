@@ -39,7 +39,7 @@ static class Program
         int scale = 10000;
         List<double[]> XorInput = new List<double[]>();
         List<double[]> XorLable = new List<double[]>();
-        for (int i = 0; i < testData-4; i++)
+        for (int i = 0; i < testData - 4; i++)
         {
             double[] xorI = new double[2];
             double[] xorL = new double[1];
@@ -66,13 +66,13 @@ static class Program
             network.AddTrainData(XorInput[i].ToArray(), XorLable[i].ToArray());
         }
 
-        network.Fit(0.03, 20, 10000000, 100);
+        network.Fit(0.03, 20, 1000, 100);
 
         var result0 = network.Forward(new double[] { 0, 0 })[0];
         var result1 = network.Forward(new double[] { 0, 1 })[0];
         var result2 = network.Forward(new double[] { 1, 0 })[0];
         var result3 = network.Forward(new double[] { 1, 1 })[0];
-       
+
         Console.WriteLine($"{result0},{result1},{result2},{result3}\n");
 
         network.SaveFile(XOR_FILE_NAME);
