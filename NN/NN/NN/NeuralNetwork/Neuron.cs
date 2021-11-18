@@ -9,7 +9,7 @@ namespace NeuralNetwork
 {
     public class Neuron
     {
-        //public delegate double Activation (double x);
+        //public delegate double ActivationHandler (double x);
         //public bool[] isDead { get; set; }
 
         internal double[] input { get; set; }
@@ -41,8 +41,8 @@ namespace NeuralNetwork
         private Random rdm;
 
         //激勵函數跟他的導函數
-        public Activation ActivateFunction { get; set; }
-        public Activation ActivateFunctionDerivative { get; set; }
+        public ActivationHandler ActivationMap { get; set; }
+        public ActivationHandler ActivationDerivative { get; set; }
 
         /// <summary>
         /// 
@@ -56,14 +56,9 @@ namespace NeuralNetwork
             weightAccErrorDer = new double[n];
             weightNumAccumulatedDers = new double[n];
             bias = new double();
-            ActivateFunction = Functions.Activation.Linear;
-            ActivateFunctionDerivative = Functions.Activation.LinearDerivative;
+            ActivationMap = Activation.Function.Linear.Map;
+            ActivationDerivative = Activation.Function.Linear.Derivative;
             Randomize(n);
-        }
-
-        public bool IsDead(int i)
-        {
-            return weight[i] == 0;
         }
 
         /// <summary>
@@ -94,7 +89,7 @@ namespace NeuralNetwork
                 input[i] = value[i];
                 totalInput += value[i] * weight[i];
             }
-            output = ActivateFunction(totalInput);
+            output = ActivationMap(totalInput);
             return output;
         }
 
@@ -116,8 +111,8 @@ namespace NeuralNetwork
         {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("Neuron");
-            stringBuilder.AppendLine(ActivateFunction.Method.Name);
-            stringBuilder.AppendLine(ActivateFunctionDerivative.Method.Name);
+            stringBuilder.AppendLine(ActivationMap.Method.Name);
+            stringBuilder.AppendLine(ActivationDerivative.Method.Name);
             stringBuilder.AppendLine(IsInput.ToString());
             stringBuilder.AppendLine(bias.ToString());
             stringBuilder.AppendLine(weight.Length.ToString());
@@ -137,11 +132,11 @@ namespace NeuralNetwork
         {
             Neuron neuron = new Neuron();
             string[] lines = data.Split(new string[] { "\r\n" }, StringSplitOptions.None);
-            neuron.ActivateFunction = typeof(IActivationFunction).GetMethod(lines[0]).CreateDelegate(typeof(Activation), Functions.Activation) as Activation;
-            neuron.ActivateFunctionDerivative = typeof(IActivationFunction).GetMethod(lines[1]).CreateDelegate(typeof(Activation), Functions.Activation) as Activation;
+            neuron.ActivationMap = typeof(IActivation).GetMethod(lines[0]).CreateDelegate(typeof(ActivationHandler), Activation.Function) as ActivationHandler;
+            neuron.ActivationDerivative = typeof(IActivation).GetMethod(lines[1]).CreateDelegate(typeof(ActivationHandler), Activation.Function) as ActivationHandler;
 
-            //neuron.ActivateFunction = typeof(IActivationFunction).GetMethod(lines[0]).CreateDelegate(typeof(IActivationFunction), Functions.Activation) as Activation;
-            //neuron.ActivateFunctionDerivative = typeof(IActivationFunction).GetMethod(lines[1]).CreateDelegate(typeof(IActivationFunction), Functions.Activation) as Activation;
+            //neuron.ActivationMap = typeof(IActivation).GetMethod(lines[0]).CreateDelegate(typeof(IActivation), Functions.ActivationHandler) as ActivationHandler;
+            //neuron.ActivationDerivative = typeof(IActivation).GetMethod(lines[1]).CreateDelegate(typeof(IActivation), Functions.ActivationHandler) as ActivationHandler;
 
 
             neuron.IsInput = bool.Parse(lines[2]);

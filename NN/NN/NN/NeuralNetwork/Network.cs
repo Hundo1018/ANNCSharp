@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 namespace NeuralNetwork
 {
 
@@ -13,19 +14,26 @@ namespace NeuralNetwork
 
         private List<Layer> layers { get; set; } = new List<Layer>();//此網路的層數
         private List<List<List<double>>> TrainData { get; set; }
-        private Regularization _regularizationFunction;
-        private Regularization _regularizationFunctionDerivative;
-        private Error _errorFunction;
-        private Error _errorFunctionDerivative;
+        private RegularizationHandler _regularizationMap;
+        private RegularizationHandler _regularizationDerivative;
+        private ErrorHandler _errorMap;
+        private ErrorHandler _errorDerivative;
 
-        public Network(Regularization regularizationFunction, Regularization regularizationFunctionDerivative)
+        public Network(IRegularization regularization)
         {
-            _regularizationFunction = regularizationFunction;
-            _regularizationFunctionDerivative = regularizationFunctionDerivative;
+            _regularizationMap = regularization.Map;
+            _regularizationDerivative = regularization.Derivative;
             layers = new List<Layer>();
             TrainData = new List<List<List<double>>>();
         }
-        public Network() : this(Functions.Regularization.None, Functions.Regularization.NoneDerivative)
+
+        public void SetRegularization(IRegularization regularization)
+        {
+            _regularizationMap = regularization.Map;
+            _regularizationDerivative = regularization.Derivative;
+        }
+
+        public Network() : this(Regularization.Function.None)
         {
         }
 
@@ -43,6 +51,30 @@ namespace NeuralNetwork
             layers.Last().Connect(layers[layers.Count() - 2]);
         }
 
+        public void AddLayer(int n)
+        {
+            layers.Add(new Layer(n));
+            if (layers.Count() == 1)
+            {
+                return;
+            }
+            layers.Last().Connect(layers[layers.Count() - 2]);
+        }
+        public void AddLayer(int n,IActivation activation)
+        {
+            layers.Add(new Layer(n,activation));
+            if (layers.Count() == 1)
+            {
+                return;
+            }
+            layers.Last().Connect(layers[layers.Count() - 2]);
+        }
+
+        public void AddSoftMaxLayer(int n)
+        {
+
+        }
+
         internal void LoadLayer(Layer layer)
         {
             layers.Add(layer);
@@ -57,7 +89,7 @@ namespace NeuralNetwork
             for (int i = 0; i < layers.Last().neurons.Length; i++)
             {
                 layers.Last().neurons[i].outputDer =
-                    _errorFunctionDerivative(layers.Last().neurons[i].output, target[i]);
+                    _errorDerivative(layers.Last().neurons[i].output, target[i]);
             }
             //從隱藏層最後一層往前回饋直到 輸入層(不含)
             for (int currentLayerIndex = layers.Count - 1; currentLayerIndex >= 1; currentLayerIndex--)
@@ -73,7 +105,7 @@ namespace NeuralNetwork
                     //神經元.輸入導數 = 神經元.輸出導數 * 激勵導數函式(神經元.總輸入)
                     currentNeuron.inputDer =
                         currentNeuron.outputDer *
-                        currentNeuron.ActivateFunctionDerivative(currentNeuron.totalInput);
+                        currentNeuron.ActivationDerivative(currentNeuron.totalInput);
                     //神經元.累積輸入導數 += 神經元.輸入導數
                     currentNeuron.accInputDer += currentNeuron.inputDer;
                     //神經元.累積輸入導數的數量
@@ -85,8 +117,6 @@ namespace NeuralNetwork
                     Neuron currentNeuron = currentLayer.neurons[neuronIndex];
                     for (int i = 0; i < currentNeuron.weight.Length; i++)
                     {
-                        if (currentNeuron.IsDead(i))
-                            continue;
                         
                         Neuron prevNeuron = layers[currentLayerIndex - 1].neurons[i];
                         //if (currentNeuron.isDead[i]) continue;
@@ -142,26 +172,20 @@ namespace NeuralNetwork
                     //更新每個進入這個神經元的權重
                     for (int i = 0; i < neuron.weight.Length; i++)
                     {
-                        if (neuron.IsDead(i)) continue;
-                        double regulDer = (_regularizationFunction == Functions.Regularization.None ? 0 : _regularizationFunctionDerivative(neuron.weight[i]));
+                        double regulDer =  _regularizationDerivative(neuron.weight[i]);
                         if (neuron.weightNumAccumulatedDers[i] > 0)
                         {
                             //用 E對w的微分調整權重
                             neuron.weight[i] = neuron.weight[i] -
                                 (learningRate / neuron.weightNumAccumulatedDers[i]) * neuron.weightAccErrorDer[i];
                             //根據正則化(Regularization)進一步更新權重
+                            //目前沒有使用
                             double newLinkWeight = neuron.weight[i] -
                                 (learningRate * regularizationRate) * regulDer;
-                            if (_regularizationFunction == Functions.Regularization.L1 &&
-                                neuron.weight[i] * newLinkWeight < 0)
-                            {
-                                //根據正則化規則 連結權重小於0時將連結判為死亡
-                                neuron.weight[i] = 0;
-                            }
-                            else
-                            {
-                                neuron.weight[i] = newLinkWeight;
-                            }
+
+                            neuron.weight[i] = newLinkWeight;
+
+                            //用完清掉
                             neuron.weightAccErrorDer[i] = 0;
                             neuron.weightNumAccumulatedDers[i] = 0;
                         }
@@ -177,9 +201,9 @@ namespace NeuralNetwork
         /// <returns></returns>
         public double[] Forward(params double[] vs)
         {
-            for (int i = 0; i < this.layers.Count; i++)
+            for (int i = 0; i < layers.Count; i++)
             {
-                vs = this.layers[i].Forward(vs);
+                vs = layers[i].Forward(vs);
             }
             return vs;
         }
@@ -209,17 +233,17 @@ namespace NeuralNetwork
             {
                 //正向計算結果
                 double output = this.Forward(TrainData[i][0].ToArray())[0];
-                loss += _errorFunction(output, TrainData[i][1][0]);
+                loss += _errorMap(output, TrainData[i][1][0]);
             }
             return loss / TrainData.Count();
         }
 
 
 
-        public void SetErrorFunction(Error errorFunction, Error errorFunctionDerivative)
+        public void SetErrorFunction(IError error)
         {
-            _errorFunction = errorFunction;
-            _errorFunctionDerivative = errorFunctionDerivative;
+            _errorMap = error.Map;
+            _errorDerivative = error.Derivative;
         }
 
         /// <summary>
@@ -231,6 +255,7 @@ namespace NeuralNetwork
         /// <param name="showPerEpoch"></param>
         public void Fit(double learningRate, uint batchSize, uint epoch, uint showPerEpoch)
         {
+
             for (uint e = 0; e < epoch; e++)
             {
                 for (int i = 0; i < TrainData.Count; i++)
@@ -242,7 +267,7 @@ namespace NeuralNetwork
                     if ((e + 1) % batchSize == 0)
                     {
                         //更新權重
-                        this.UpdateWeights(learningRate, 1);
+                        this.UpdateWeights(learningRate, 0);
                     }
                 }
                 if ((e % showPerEpoch) == 0)
@@ -251,9 +276,12 @@ namespace NeuralNetwork
                 }
             }
         }
-        private void Show(uint ep)
+
+
+
+        private void Show(ulong ep)
         {
-            Console.WriteLine($"Epoch {ep}: Loss {GetLoss().ToString("0.00000")}\n");
+            Console.WriteLine($"Epoch {ep}: Loss {GetLoss().ToString("0.00000")}");
         }
 
 
@@ -268,10 +296,10 @@ namespace NeuralNetwork
             string[] networkLines = data.Split(new string[] { "Network\r\n" }, StringSplitOptions.None);
             string[] layerLines = networkLines[1].Split(new string[] { "Layer\r\n" }, StringSplitOptions.None);
             string[] lines = layerLines[0].Split(new string[] { "\r\n" }, StringSplitOptions.None);
-            network._regularizationFunction = typeof(IRegularizationFunction).GetMethod(lines[0]).CreateDelegate(typeof(Regularization), Functions.Regularization) as Regularization;
-            network._regularizationFunctionDerivative = typeof(IRegularizationFunction).GetMethod(lines[1]).CreateDelegate(typeof(Regularization), Functions.Regularization) as Regularization;
-            network._errorFunction = typeof(IErrorFunction).GetMethod(lines[2]).CreateDelegate(typeof(Error), Functions.Error) as Error;
-            network._errorFunctionDerivative = typeof(IErrorFunction).GetMethod(lines[3]).CreateDelegate(typeof(Error), Functions.Error) as Error;
+            network._regularizationMap = typeof(IRegularization).GetMethod(lines[0]).CreateDelegate(typeof(RegularizationHandler), Regularization.Function) as RegularizationHandler;
+            network._regularizationDerivative = typeof(IRegularization).GetMethod(lines[1]).CreateDelegate(typeof(RegularizationHandler), Regularization.Function) as RegularizationHandler;
+            network._errorMap = typeof(IError).GetMethod(lines[2]).CreateDelegate(typeof(ErrorHandler), Error.Function) as ErrorHandler;
+            network._errorDerivative = typeof(IError).GetMethod(lines[3]).CreateDelegate(typeof(ErrorHandler), Error.Function) as ErrorHandler;
             int len = int.Parse(lines[4]);
             //Layer layer = new Layer(lines[0]);
             for (int i = 1; i <= len; i++)
@@ -318,10 +346,10 @@ namespace NeuralNetwork
         {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("Network");
-            stringBuilder.AppendLine(_regularizationFunction.Method.Name);
-            stringBuilder.AppendLine(_regularizationFunctionDerivative.Method.Name);
-            stringBuilder.AppendLine(_errorFunction.Method.Name);
-            stringBuilder.AppendLine(_errorFunctionDerivative.Method.Name);
+            stringBuilder.AppendLine(_regularizationMap.Method.Name);
+            stringBuilder.AppendLine(_regularizationDerivative.Method.Name);
+            stringBuilder.AppendLine(_errorMap.Method.Name);
+            stringBuilder.AppendLine(_errorDerivative.Method.Name);
             stringBuilder.AppendLine(layers.Count().ToString());
             for (int i = 0; i < layers.Count(); i++)
             {

@@ -6,23 +6,25 @@ using System.Threading.Tasks;
 using System.Text.Json;
 namespace NeuralNetwork
 {
+    // TODO: 多一種最尾端的Layer來做整層激勵函數的計算 Ex: SoftMax + CrossEntropy
+
     public class Layer
     {
         public Neuron[] neurons { get; set; }//此層的神經元數量
-        private Activation ActivateFunction { get; set; }
-        private Activation ActivateFunctionDerivative { get; set; }
-        public Layer(int n, Activation activateFunction, Activation activateFunctionDerivative)
+        private ActivationHandler ActivationMap { get; set; }
+        private ActivationHandler ActivationDerivative { get; set; }
+        public Layer(int n, IActivation activateFunction)
         {
             neurons = new Neuron[n];
-            ActivateFunction = activateFunction;
-            ActivateFunctionDerivative = activateFunctionDerivative;
+            ActivationMap = activateFunction.Map;
+            ActivationDerivative = activateFunction.Derivative;
         }
 
         /// <summary>
         /// 輸入層
         /// </summary>
         /// <param name="n"></param>
-        public Layer(int n) : this(n, Functions.Activation.Linear, Functions.Activation.LinearDerivative)
+        public Layer(int n) : this(n, Activation.Function.Linear)
         {
             for (int i = 0; i < n; i++)
             {
@@ -61,8 +63,8 @@ namespace NeuralNetwork
             for (int i = 0; i < this.neurons.Length; i++)
             {
                 neurons[i] = new Neuron(lastLayer.neurons.Length);
-                neurons[i].ActivateFunction = ActivateFunction;
-                neurons[i].ActivateFunctionDerivative = ActivateFunctionDerivative;
+                neurons[i].ActivationMap = ActivationMap;
+                neurons[i].ActivationDerivative = ActivationDerivative;
             }
         }
 
@@ -89,8 +91,8 @@ namespace NeuralNetwork
                 Neuron neuron = Neuron.Parse(lines[i]);
                 layer.neurons[i - 1] = neuron;
             }
-            layer.ActivateFunction = layer.neurons[0].ActivateFunction;
-            layer.ActivateFunctionDerivative = layer.neurons[0].ActivateFunctionDerivative;
+            layer.ActivationMap = layer.neurons[0].ActivationMap;
+            layer.ActivationDerivative = layer.neurons[0].ActivationDerivative;
             return layer;
         }
     }

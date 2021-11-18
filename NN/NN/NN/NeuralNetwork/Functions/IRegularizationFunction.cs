@@ -6,15 +6,10 @@ using System.Threading.Tasks;
 
 namespace NeuralNetwork
 {
-    public delegate double Regularization(double x);
-
-    public interface IRegularizationFunction
+    public delegate double RegularizationHandler(double x);
+    public interface IRegularization
     {
-        double None(double w);
-        double NoneDerivative(double w);
-        double L1(double w);
-        double L1Derivative(double w);
-        double L2(double w);
-        double L2Derivative(double w);
+        double Map(double w);
+        double Derivative(double w);
     }
 }

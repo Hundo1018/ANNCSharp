@@ -6,12 +6,11 @@ using System.Threading.Tasks;
 
 namespace NeuralNetwork
 {
-    public delegate double Error(double output, double target);
+    public delegate double ErrorHandler(double output, double target);
 
-    public interface IErrorFunction
+    public interface IError
     {
-        double MeanSquareError(double output, double target);
-        double MeanSquareErrorDerivative(double output, double target);
-
+        double Map(double output, double target);
+        double Derivative(double output, double target);
     }
 }

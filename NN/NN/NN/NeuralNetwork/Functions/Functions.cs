@@ -6,25 +6,10 @@ using System.Threading.Tasks;
 
 namespace NeuralNetwork
 {
-    public partial class Functions: IActivationFunction, IErrorFunction, IRegularizationFunction
+
+    public abstract class FunctionSingleton<T> where T : FunctionSingleton<T>
     {
-        private readonly static Functions _functions = new Functions();
-        public static IActivationFunction Activation
-        {
-            get { return _functions; } 
-        }
-        public static IErrorFunction Error
-        {
-            get { return _functions; }
-        }
-        public static IRegularizationFunction Regularization
-        {
-            get { return _functions; }
-        }
-        Functions()
-        {
-        }
+        private static readonly Lazy<T> _lazy = new Lazy<T>(() => Activator.CreateInstance(typeof(T), true) as T);
+        public static T Function { get { return _lazy.Value; } }
     }
 }
-
-

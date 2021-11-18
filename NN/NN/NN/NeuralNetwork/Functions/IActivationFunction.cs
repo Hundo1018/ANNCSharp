@@ -6,18 +6,11 @@ using System.Threading.Tasks;
 
 namespace NeuralNetwork
 {
-    public delegate double Activation(double x);
+    public delegate double ActivationHandler(params double[] x);
 
-    public interface IActivationFunction
+    public interface IActivation
     {
-        double Sigmoid(double x);
-        double SigmoidDerivative(double x);
-        double ReLU(double x);
-        double ReLUDerivative(double x);
-        double LeakyReLU(double x);
-        double LeakyReLUDerivative(double x);
-        double Linear(double x);
-        double LinearDerivative(double x);
-        //double SoftMax(params double[] x);
+        double Map(params double[] x);
+        double Derivative(params double[] x);
     }
 }
