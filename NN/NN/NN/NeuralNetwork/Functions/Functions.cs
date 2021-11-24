@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NeuralNetwork
+namespace HundoNN
 {
 
     public abstract class FunctionSingleton<T> where T : FunctionSingleton<T>

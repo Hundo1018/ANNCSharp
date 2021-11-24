@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
-namespace NeuralNetwork
+namespace HundoNN
 {
     // TODO: 多一種最尾端的Layer來做整層激勵函數的計算 Ex: SoftMax + CrossEntropy
 
@@ -13,12 +13,20 @@ namespace NeuralNetwork
         public Neuron[] neurons { get; set; }//此層的神經元數量
         private ActivationHandler ActivationMap { get; set; }
         private ActivationHandler ActivationDerivative { get; set; }
-        public Layer(int n, IActivation activateFunction)
+        private NormalizationHandler NormalizationMap { get; set; }
+        private NormalizationHandler NormalizationDerivative { get; set; }
+        public Layer(int n, IActivation activateFunction, INormalization normalizationFunction)
         {
             neurons = new Neuron[n];
             ActivationMap = activateFunction.Map;
             ActivationDerivative = activateFunction.Derivative;
+            NormalizationMap = normalizationFunction.Map;
+            NormalizationDerivative = normalizationFunction.Derivative;
         }
+        public Layer(int n, IActivation activateFunction):this(n, activateFunction,Normalization.Function.None)
+        {
+        }
+
 
         /// <summary>
         /// 輸入層
@@ -39,6 +47,7 @@ namespace NeuralNetwork
         {
 
         }
+
         /// <summary>
         /// 前饋
         /// </summary>
@@ -51,6 +60,7 @@ namespace NeuralNetwork
             {
                 output[i] = neurons[i].Forward(i, value);
             }
+            output = NormalizationMap(output);
             return output;
         }
 
@@ -73,6 +83,9 @@ namespace NeuralNetwork
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("Layer");
             stringBuilder.AppendLine(neurons.Length.ToString());
+            stringBuilder.AppendLine(NormalizationMap.Method.Name);
+            stringBuilder.AppendLine(NormalizationDerivative.Method.Name);
+
             foreach (var neuron in neurons)
             {
                 stringBuilder.AppendLine(neuron.Save());
@@ -86,7 +99,9 @@ namespace NeuralNetwork
             string[] lines = data.Split(new string[] { "Neuron\r\n" }, StringSplitOptions.None);
             int len = int.Parse(lines[0]);
             layer.neurons = new Neuron[len];
-            for (int i = 1; i <= len; i++)
+            layer.NormalizationMap = typeof(INormalization).GetMethod(lines[1]).CreateDelegate(typeof(NormalizationHandler), Normalization.Function) as NormalizationHandler;
+            layer.NormalizationDerivative = typeof(INormalization).GetMethod(lines[2]).CreateDelegate(typeof(NormalizationHandler), Normalization.Function) as NormalizationHandler;
+            for (int i = 3; i <= len; i++)
             {
                 Neuron neuron = Neuron.Parse(lines[i]);
                 layer.neurons[i - 1] = neuron;

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NeuralNetwork
+namespace HundoNN
 {
     public class Error : FunctionSingleton<Error>
     {
@@ -22,15 +22,5 @@ namespace NeuralNetwork
             return 0.5 * Math.Pow(output - target, 2);
         }
     }
-    /*public class CrossEntropy:FunctionSingleton<CrossEntropy>,IError
-    {
-        public double Map(double output, double target)
-        {
-        }
 
-        public double Derivative(double output, double target)
-        {
-        }
-
-    }*/
 }

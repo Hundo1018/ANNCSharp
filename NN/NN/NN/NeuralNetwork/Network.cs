@@ -5,7 +5,7 @@ using System.Text;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
-namespace NeuralNetwork
+namespace HundoNN
 {
 
     [Serializable]
@@ -18,6 +18,9 @@ namespace NeuralNetwork
         private RegularizationHandler _regularizationDerivative;
         private ErrorHandler _errorMap;
         private ErrorHandler _errorDerivative;
+        private LossHandler _lossMap;
+        private LossHandler _lossDerivative;
+
 
         public Network(IRegularization regularization)
         {
@@ -31,6 +34,12 @@ namespace NeuralNetwork
         {
             _regularizationMap = regularization.Map;
             _regularizationDerivative = regularization.Derivative;
+        }
+
+        public void SetLoss(ILoss loss)
+        {
+            _lossMap = loss.Map;
+            _lossDerivative = loss.Derivative;
         }
 
         public Network() : this(Regularization.Function.None)
@@ -60,9 +69,9 @@ namespace NeuralNetwork
             }
             layers.Last().Connect(layers[layers.Count() - 2]);
         }
-        public void AddLayer(int n,IActivation activation)
+        public void AddLayer(int n, IActivation activation)
         {
-            layers.Add(new Layer(n,activation));
+            layers.Add(new Layer(n, activation));
             if (layers.Count() == 1)
             {
                 return;
@@ -70,10 +79,6 @@ namespace NeuralNetwork
             layers.Last().Connect(layers[layers.Count() - 2]);
         }
 
-        public void AddSoftMaxLayer(int n)
-        {
-
-        }
 
         internal void LoadLayer(Layer layer)
         {
@@ -85,9 +90,12 @@ namespace NeuralNetwork
         /// <param name="target"></param>
         private void Backward(double[] target)
         {
+
+
             //輸出層需要使用誤差函數來定義誤差
             for (int i = 0; i < layers.Last().neurons.Length; i++)
             {
+                //TODO: 要能切換lossDer
                 layers.Last().neurons[i].outputDer =
                     _errorDerivative(layers.Last().neurons[i].output, target[i]);
             }
@@ -117,7 +125,7 @@ namespace NeuralNetwork
                     Neuron currentNeuron = currentLayer.neurons[neuronIndex];
                     for (int i = 0; i < currentNeuron.weight.Length; i++)
                     {
-                        
+
                         Neuron prevNeuron = layers[currentLayerIndex - 1].neurons[i];
                         //if (currentNeuron.isDead[i]) continue;
                         currentNeuron.weightErrorDer[i] = currentNeuron.inputDer * prevNeuron.output;
@@ -172,7 +180,7 @@ namespace NeuralNetwork
                     //更新每個進入這個神經元的權重
                     for (int i = 0; i < neuron.weight.Length; i++)
                     {
-                        double regulDer =  _regularizationDerivative(neuron.weight[i]);
+                        double regulDer = _regularizationDerivative(neuron.weight[i]);
                         if (neuron.weightNumAccumulatedDers[i] > 0)
                         {
                             //用 E對w的微分調整權重
@@ -309,13 +317,13 @@ namespace NeuralNetwork
             }
             return network;
         }
-        
+
         /// <summary>
         /// 從位置讀取字串資料
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static bool LoadFile(string path,out string data)
+        public static bool LoadFile(string path, out string data)
         {
             data = "";
             try
@@ -334,10 +342,10 @@ namespace NeuralNetwork
             {
                 return false;
             }
-            
+
             return true;
         }
-        
+
         /// <summary>
         /// 儲存資料
         /// </summary>
@@ -357,7 +365,7 @@ namespace NeuralNetwork
             }
             return stringBuilder.ToString();
         }
-        
+
         /// <summary>
         /// 存檔
         /// </summary>

@@ -6,7 +6,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{7897BCA9-BA23-4B50-A4CD-455877145EC9}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>NeuralNetwork</RootNamespace>
+    <RootNamespace>HundoNN</RootNamespace>
     <AssemblyName>NN</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -60,7 +60,11 @@
     <Compile Include="NeuralNetwork\Functions\Functions.cs" />
     <Compile Include="NeuralNetwork\Functions\IActivationFunction.cs" />
     <Compile Include="NeuralNetwork\Functions\IErrorFunction.cs" />
+    <Compile Include="NeuralNetwork\Functions\ILoss.cs" />
+    <Compile Include="NeuralNetwork\Functions\INormalization.cs" />
     <Compile Include="NeuralNetwork\Functions\IRegularizationFunction.cs" />
+    <Compile Include="NeuralNetwork\Functions\LossFunction.cs" />
+    <Compile Include="NeuralNetwork\Functions\Normalization.cs" />
     <Compile Include="NeuralNetwork\Layer.cs" />
     <Compile Include="NeuralNetwork\Network.cs" />
     <Compile Include="NeuralNetwork\Neuron.cs" />

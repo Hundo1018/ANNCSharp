@@ -4,12 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Collections;
-using NeuralNetwork;
+using HundoNN;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text;
-
 
 static class Program
 {

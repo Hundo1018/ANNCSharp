@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NeuralNetwork
+namespace HundoNN
 {
     public class Activation : FunctionSingleton<Activation>
     {
@@ -15,62 +15,50 @@ namespace NeuralNetwork
     }
 
 
-    
-   public class ReLU : FunctionSingleton<ReLU>, IActivation
+
+    public class ReLU : FunctionSingleton<ReLU>, IActivation
     {
-        public double Map(params double[] x)
+        public double Map(double x)
         {
-            return Math.Max(0, x.First());
+            return Math.Max(0, x);
         }
-        public double Derivative(params double[] x)
+        public double Derivative(double x)
         {
-            return (x.First() <= 0 ? 0 : 1);
+            return (x <= 0 ? 0 : 1);
         }
     }
     public class LeakyReLU : FunctionSingleton<LeakyReLU>, IActivation
     {
-        public double Map(params double[] x)
+        public double Map(double x)
         {
-            return Math.Max(0.01 * x.First(), x.First());
+            return Math.Max(0.01 * x, x);
         }
-        public double Derivative(params double[] x)
+        public double Derivative(double x)
         {
-            return (x.First() > 0 ? 1 : 0);
+            return (x > 0 ? 1 : 0);
         }
     }
     public class Sigmoid : FunctionSingleton<Sigmoid>, IActivation
     {
-        public double Map(params double[] x)
+        public double Map(double x)
         {
-            return 1.0 / (1.0 + Math.Exp(-x.First()));
+            return 1.0 / (1.0 + Math.Exp(-x));
         }
-        public double Derivative(params double[] x)
+        public double Derivative(double x)
         {
-            x[0] = Map(x[0]);
-            return x[0] * (1 - x[0]);
+            x = Map(x);
+            return x * (1 - x);
         }
     }
     public class Linear : FunctionSingleton<Linear>, IActivation
     {
-        public double Map(params double[] x)
+        public double Map(double x)
         {
-            return x.First();
+            return x;
         }
-        public double Derivative(params double[] x)
+        public double Derivative(double x)
         {
             return 1;
-        }
-    }
-    public class Softmax : FunctionSingleton<Softmax>, IActivation
-    {
-        public double Derivative(params double[] x)
-        {
-            throw new NotImplementedException();
-        }
-
-        public double Map(params double[] x)
-        {
-            throw new NotImplementedException();
         }
     }
 }

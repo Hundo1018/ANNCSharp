@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NeuralNetwork
+namespace HundoNN
 {
-    public delegate double ActivationHandler(params double[] x);
+    public delegate double ActivationHandler(double x);
 
     public interface IActivation
     {
-        double Map(params double[] x);
-        double Derivative(params double[] x);
+        double Map(double x);
+        double Derivative(double x);
     }
 }

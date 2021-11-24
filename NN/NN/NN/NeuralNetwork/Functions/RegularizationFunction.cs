@@ -4,15 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NeuralNetwork
+namespace HundoNN
 {
     public class Regularization : FunctionSingleton<Regularization>
     {
-        public None None { get; } = None.Function;
+        public NoneRegularization None { get; } = NoneRegularization.Function;
         public L1 L1 { get; } = L1.Function;
         public L2 L2 { get; } = L2.Function;
     }
-    public class None : FunctionSingleton<None>, IRegularization
+    public class NoneRegularization : FunctionSingleton<NoneRegularization>, IRegularization
     {
         public double Derivative(double w)
         {
