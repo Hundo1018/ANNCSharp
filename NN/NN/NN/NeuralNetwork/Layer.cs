@@ -6,18 +6,17 @@ using System.Threading.Tasks;
 using System.Text.Json;
 namespace HundoNN
 {
-    // TODO: 多一種最尾端的Layer來做整層激勵函數的計算 Ex: SoftMax + CrossEntropy
-
     public class Layer
     {
-        public Neuron[] neurons { get; set; }//此層的神經元數量
+        public Neuron[] Neurons { get; set; }//此層的神經元數量
         private ActivationHandler ActivationMap { get; set; }
+        //LayerActivationHandler layerActivationHandler;
         private ActivationHandler ActivationDerivative { get; set; }
-        private NormalizationHandler NormalizationMap { get; set; }
-        private NormalizationHandler NormalizationDerivative { get; set; }
+        public NormalizationHandler NormalizationMap { get; set; }
+        public NormalizationHandler NormalizationDerivative { get; set; }
         public Layer(int n, IActivation activateFunction, INormalization normalizationFunction)
         {
-            neurons = new Neuron[n];
+            Neurons = new Neuron[n];
             ActivationMap = activateFunction.Map;
             ActivationDerivative = activateFunction.Derivative;
             NormalizationMap = normalizationFunction.Map;
@@ -36,7 +35,7 @@ namespace HundoNN
         {
             for (int i = 0; i < n; i++)
             {
-                neurons[i] = new Neuron();
+                Neurons[i] = new Neuron();
             }
         }
 
@@ -54,13 +53,18 @@ namespace HundoNN
         /// <param name="value"></param>
         public double[] Forward(params double[] value)
         {
-            int n = this.neurons.Length;
+            int n = this.Neurons.Length;
             double[] output = new double[n];
+
             for (int i = 0; i < n; i++)
             {
-                output[i] = neurons[i].Forward(i, value);
+                output[i] = Neurons[i].Forward(i, value);
             }
             output = NormalizationMap(output);
+            for (int i = 0; i < n; i++)
+            {
+                Neurons[i].Output = output[i];
+            }
             return output;
         }
 
@@ -70,11 +74,11 @@ namespace HundoNN
         /// <param name="nextLayer">目標連接層</param>
         public void Connect(Layer lastLayer)
         {
-            for (int i = 0; i < this.neurons.Length; i++)
+            for (int i = 0; i < this.Neurons.Length; i++)
             {
-                neurons[i] = new Neuron(lastLayer.neurons.Length);
-                neurons[i].ActivationMap = ActivationMap;
-                neurons[i].ActivationDerivative = ActivationDerivative;
+                Neurons[i] = new Neuron(lastLayer.Neurons.Length);
+                Neurons[i].ActivationMap = ActivationMap;
+                Neurons[i].ActivationDerivative = ActivationDerivative;
             }
         }
 
@@ -82,11 +86,11 @@ namespace HundoNN
         {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("Layer");
-            stringBuilder.AppendLine(neurons.Length.ToString());
+            stringBuilder.AppendLine(Neurons.Length.ToString());
             stringBuilder.AppendLine(NormalizationMap.Method.Name);
             stringBuilder.AppendLine(NormalizationDerivative.Method.Name);
 
-            foreach (var neuron in neurons)
+            foreach (var neuron in Neurons)
             {
                 stringBuilder.AppendLine(neuron.Save());
             }
@@ -98,16 +102,16 @@ namespace HundoNN
             Layer layer = new Layer();
             string[] lines = data.Split(new string[] { "Neuron\r\n" }, StringSplitOptions.None);
             int len = int.Parse(lines[0]);
-            layer.neurons = new Neuron[len];
+            layer.Neurons = new Neuron[len];
             layer.NormalizationMap = typeof(INormalization).GetMethod(lines[1]).CreateDelegate(typeof(NormalizationHandler), Normalization.Function) as NormalizationHandler;
             layer.NormalizationDerivative = typeof(INormalization).GetMethod(lines[2]).CreateDelegate(typeof(NormalizationHandler), Normalization.Function) as NormalizationHandler;
             for (int i = 3; i <= len; i++)
             {
                 Neuron neuron = Neuron.Parse(lines[i]);
-                layer.neurons[i - 1] = neuron;
+                layer.Neurons[i - 1] = neuron;
             }
-            layer.ActivationMap = layer.neurons[0].ActivationMap;
-            layer.ActivationDerivative = layer.neurons[0].ActivationDerivative;
+            layer.ActivationMap = layer.Neurons[0].ActivationMap;
+            layer.ActivationDerivative = layer.Neurons[0].ActivationDerivative;
             return layer;
         }
     }

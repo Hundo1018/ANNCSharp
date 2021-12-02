@@ -12,30 +12,29 @@ namespace HundoNN
         //public delegate double ActivationHandler (double x);
         //public bool[] isDead { get; set; }
 
-        internal double[] input { get; set; }
         //權重
-        public double[] weight { get; set; }
+        public double[] Weight { get; set; }
         //下一層的 輸入
         //outputs,
         //權重的 誤差導數
-        internal double[] weightErrorDer;
+        internal double[] WeightErrorDer { get; set; }
         //權重的 累積誤差導數
-        internal double[] weightAccErrorDer;
+        internal double[] WeightAccErrorDer { get; set; }
         //權重的 累計誤差導數的數量
-        internal double[] weightNumAccumulatedDers;
-        public double bias { get; set; }
-        internal double output;
-        internal double error;
+        internal double[] WeightNumAccumulatedDers { get; set; }
+        public double Bias { get; set; }
+        internal double Output { get; set; }
+        internal double Error { get; set; }
         //總輸入
-        internal double totalInput;
+        internal double TotalInput { get; set; }
         //這個神經元的總輸入的誤差導數
-        internal double inputDer;
+        internal double InputDer { get; set; }
         //這個神經元的輸出的誤差導數
-        internal double outputDer;
+        internal double OutputDer { get; set; }
         //這個神經元的總輸入的累積誤差導數
-        internal double accInputDer;
+        internal double AccInputDer { get; set; }
         //累積誤差的數量
-        internal double numAccumulatedDers;
+        internal double NumAccumulatedDers { get; set; }
 
         public bool IsInput { get; set; }
         private Random rdm;
@@ -50,12 +49,11 @@ namespace HundoNN
         /// <param name="n">前一級輸出數量</param>
         public Neuron(int n)
         {
-            input = new double[n];
-            weight = new double[n];
-            weightErrorDer = new double[n];
-            weightAccErrorDer = new double[n];
-            weightNumAccumulatedDers = new double[n];
-            bias = new double();
+            Weight = new double[n];
+            WeightErrorDer = new double[n];
+            WeightAccErrorDer = new double[n];
+            WeightNumAccumulatedDers = new double[n];
+            Bias = new double();
             ActivationMap = Activation.Function.Linear.Map;
             ActivationDerivative = Activation.Function.Linear.Derivative;
             Randomize(n);
@@ -66,8 +64,8 @@ namespace HundoNN
         /// </summary>
         public Neuron() : this(1)
         {
-            bias = 0;
-            weight[0] = 1;
+            Bias = 0;
+            Weight[0] = 1;
             IsInput = true;
         }
 
@@ -80,17 +78,17 @@ namespace HundoNN
         {
             if (IsInput)
             {
-                input[0] = value[index];
-                return input[0];
+                return value[index];
             }
-            totalInput = bias;
+
+            TotalInput = Bias;
             for (int i = 0; i < value.Length; i++)
             {
-                input[i] = value[i];
-                totalInput += value[i] * weight[i];
+                TotalInput += value[i] * Weight[i];
             }
-            output = ActivationMap(totalInput);
-            return output;
+            Output = ActivationMap(TotalInput);
+            Normalization.Function.Softmax.Map(value);
+            return Output;
         }
 
         /// <summary>
@@ -100,10 +98,10 @@ namespace HundoNN
         public void Randomize(int n)
         {
             rdm = new Random(GetHashCode());
-            bias = rdm.NextDouble() ;
+            Bias = rdm.NextDouble() ;
             for (int i = 0; i < n; i++)
             {
-                weight[i] = rdm.NextDouble() - 0.5;
+                Weight[i] = (rdm.NextDouble() - 0.5)*2;
             }
         }
 
@@ -114,9 +112,9 @@ namespace HundoNN
             stringBuilder.AppendLine(ActivationMap.Method.Name);
             stringBuilder.AppendLine(ActivationDerivative.Method.Name);
             stringBuilder.AppendLine(IsInput.ToString());
-            stringBuilder.AppendLine(bias.ToString());
-            stringBuilder.AppendLine(weight.Length.ToString());
-            foreach (var w in weight)
+            stringBuilder.AppendLine(Bias.ToString());
+            stringBuilder.AppendLine(Weight.Length.ToString());
+            foreach (var w in Weight)
             {
                 stringBuilder.AppendLine(w.ToString());
             }
@@ -140,15 +138,14 @@ namespace HundoNN
 
 
             neuron.IsInput = bool.Parse(lines[2]);
-            neuron.bias = double.Parse(lines[3]);
+            neuron.Bias = double.Parse(lines[3]);
             int len = int.Parse(lines[4]);
-            neuron.weight = new double[len];
+            neuron.Weight = new double[len];
             for (int i = 0; i < len; i++)
-                neuron.weight[i] = double.Parse(lines[5+i]);
-            neuron.input = new double[len];
-            neuron.weightErrorDer = new double[len];
-            neuron.weightAccErrorDer = new double[len];
-            neuron.weightNumAccumulatedDers = new double[len];
+                neuron.Weight[i] = double.Parse(lines[5+i]);
+            neuron.WeightErrorDer = new double[len];
+            neuron.WeightAccErrorDer = new double[len];
+            neuron.WeightNumAccumulatedDers = new double[len];
 
             return neuron;
         }

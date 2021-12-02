@@ -11,40 +11,42 @@ namespace HundoNN
     [Serializable]
     public class Network
     {
+        public int InputDimension{ get { return layers.First().Neurons.Length; } }
+        public int OutputDimension { get { return layers.Last().Neurons.Length; } }
 
         private List<Layer> layers { get; set; } = new List<Layer>();//此網路的層數
         private List<List<List<double>>> TrainData { get; set; }
         private RegularizationHandler _regularizationMap;
         private RegularizationHandler _regularizationDerivative;
-        private ErrorHandler _errorMap;
-        private ErrorHandler _errorDerivative;
         private LossHandler _lossMap;
         private LossHandler _lossDerivative;
 
 
-        public Network(IRegularization regularization)
-        {
-            _regularizationMap = regularization.Map;
-            _regularizationDerivative = regularization.Derivative;
-            layers = new List<Layer>();
-            TrainData = new List<List<List<double>>>();
-        }
 
+
+        /// <summary>
+        /// 設定Regularization Funciton
+        /// </summary>
+        /// <param name="regularization"></param>
         public void SetRegularization(IRegularization regularization)
         {
             _regularizationMap = regularization.Map;
             _regularizationDerivative = regularization.Derivative;
         }
 
+
+        /// <summary>
+        /// 設定Loss Function
+        /// </summary>
+        /// <param name="loss"></param>
         public void SetLoss(ILoss loss)
         {
             _lossMap = loss.Map;
             _lossDerivative = loss.Derivative;
         }
 
-        public Network() : this(Regularization.Function.None)
-        {
-        }
+
+
 
         /// <summary>
         /// 加入一層全連接層
@@ -60,30 +62,46 @@ namespace HundoNN
             layers.Last().Connect(layers[layers.Count() - 2]);
         }
 
+        /// <summary>
+        /// 加入一層全連接層
+        /// </summary>
+        /// <param name="n"></param>
+        /// <param name="activation"></param>
+        /// <param name="normalization"></param>
+        public void AddLayer(int n, IActivation activation, INormalization normalization)
+        {
+            AddLayer(new Layer(n, activation, normalization));
+        }
+
+        /// <summary>
+        /// 加入一層全連接層
+        /// </summary>
+        /// <param name="n"></param>
         public void AddLayer(int n)
         {
-            layers.Add(new Layer(n));
-            if (layers.Count() == 1)
-            {
-                return;
-            }
-            layers.Last().Connect(layers[layers.Count() - 2]);
+            AddLayer(new Layer(n));
         }
+
+        /// <summary>
+        /// 加入一層全連接層
+        /// </summary>
+        /// <param name="n"></param>
+        /// <param name="activation"></param>
         public void AddLayer(int n, IActivation activation)
         {
-            layers.Add(new Layer(n, activation));
-            if (layers.Count() == 1)
-            {
-                return;
-            }
-            layers.Last().Connect(layers[layers.Count() - 2]);
+            AddLayer(new Layer(n, activation));
         }
 
 
+        /// <summary>
+        /// 載入神經層
+        /// </summary>
+        /// <param name="layer"></param>
         internal void LoadLayer(Layer layer)
         {
             layers.Add(layer);
         }
+
         /// <summary>
         /// 倒傳遞但是不更新，而是先累積誤差
         /// </summary>
@@ -93,44 +111,62 @@ namespace HundoNN
 
 
             //輸出層需要使用誤差函數來定義誤差
-            for (int i = 0; i < layers.Last().neurons.Length; i++)
+            for (int i = 0; i < layers.Last().Neurons.Length; i++)
             {
                 //TODO: 要能切換lossDer
-                layers.Last().neurons[i].outputDer =
-                    _errorDerivative(layers.Last().neurons[i].output, target[i]);
+                layers.Last().Neurons[i].OutputDer =
+                    _lossDerivative(layers.Last().Neurons[i].Output, target[i]);
             }
+            
             //從隱藏層最後一層往前回饋直到 輸入層(不含)
             for (int currentLayerIndex = layers.Count - 1; currentLayerIndex >= 1; currentLayerIndex--)
             {
                 Layer currentLayer = layers[currentLayerIndex];
+
+                //Todo: 這裡是實驗性的code
+                double[] totalInputs = new double[currentLayer.Neurons.Length];
+
+                for (int neuronIndex = 0; neuronIndex < currentLayer.Neurons.Length; neuronIndex++)
+                {
+                    Neuron currentNeuron = currentLayer.Neurons[neuronIndex];
+                    totalInputs[neuronIndex] = currentNeuron.TotalInput;
+
+                }
+
+                //Todo:實驗性的計算softmax導函數
+                double[] newTotalInputs = currentLayer.NormalizationDerivative(totalInputs);
+
                 //算出每個神經元的誤差導數
                 //1: 總輸入
                 //2: 輸入權重
-                for (int neuronIndex = 0; neuronIndex < currentLayer.neurons.Length; neuronIndex++)
+                for (int neuronIndex = 0; neuronIndex < currentLayer.Neurons.Length; neuronIndex++)
                 {
-                    Neuron currentNeuron = currentLayer.neurons[neuronIndex];
+                    Neuron currentNeuron = currentLayer.Neurons[neuronIndex];
+                    
+                    //Todo:這也是實驗的一環
+                    currentNeuron.TotalInput = newTotalInputs[neuronIndex];
 
                     //神經元.輸入導數 = 神經元.輸出導數 * 激勵導數函式(神經元.總輸入)
-                    currentNeuron.inputDer =
-                        currentNeuron.outputDer *
-                        currentNeuron.ActivationDerivative(currentNeuron.totalInput);
+                    currentNeuron.InputDer =
+                        currentNeuron.OutputDer *
+                        currentNeuron.ActivationDerivative(currentNeuron.TotalInput);
                     //神經元.累積輸入導數 += 神經元.輸入導數
-                    currentNeuron.accInputDer += currentNeuron.inputDer;
+                    currentNeuron.AccInputDer += currentNeuron.InputDer;
                     //神經元.累積輸入導數的數量
-                    currentNeuron.numAccumulatedDers++;
+                    currentNeuron.NumAccumulatedDers++;
                 }
                 //進入神經元的每個權重的誤差導數
-                for (int neuronIndex = 0; neuronIndex < currentLayer.neurons.Length; neuronIndex++)
+                for (int neuronIndex = 0; neuronIndex < currentLayer.Neurons.Length; neuronIndex++)
                 {
-                    Neuron currentNeuron = currentLayer.neurons[neuronIndex];
-                    for (int i = 0; i < currentNeuron.weight.Length; i++)
+                    Neuron currentNeuron = currentLayer.Neurons[neuronIndex];
+                    for (int i = 0; i < currentNeuron.Weight.Length; i++)
                     {
 
-                        Neuron prevNeuron = layers[currentLayerIndex - 1].neurons[i];
+                        Neuron prevNeuron = layers[currentLayerIndex - 1].Neurons[i];
                         //if (currentNeuron.isDead[i]) continue;
-                        currentNeuron.weightErrorDer[i] = currentNeuron.inputDer * prevNeuron.output;
-                        currentNeuron.weightAccErrorDer[i] += currentNeuron.weightErrorDer[i];
-                        currentNeuron.weightNumAccumulatedDers[i]++;
+                        currentNeuron.WeightErrorDer[i] = currentNeuron.InputDer * prevNeuron.Output;
+                        currentNeuron.WeightAccErrorDer[i] += currentNeuron.WeightErrorDer[i];
+                        currentNeuron.WeightNumAccumulatedDers[i]++;
 
                     }
                 }
@@ -138,18 +174,18 @@ namespace HundoNN
                 //前一層
                 Layer prevLayer = layers[currentLayerIndex - 1];
                 //前一層的每一顆
-                for (int i = 0; i < prevLayer.neurons.Length; i++)
+                for (int i = 0; i < prevLayer.Neurons.Length; i++)
                 {
-                    Neuron prevNeuron = prevLayer.neurons[i];
+                    Neuron prevNeuron = prevLayer.Neurons[i];
                     //計算每個神經元的誤差導數
-                    prevNeuron.outputDer = 0;
+                    prevNeuron.OutputDer = 0;
                     //前一層的每根輸出連結 == 這一層的輸入連結
-                    for (int j = 0; j < currentLayer.neurons.Length; j++)
+                    for (int j = 0; j < currentLayer.Neurons.Length; j++)
                     {
 
-                        prevNeuron.outputDer +=
-                            currentLayer.neurons[j].weight[i] *
-                            currentLayer.neurons[j].inputDer;
+                        prevNeuron.OutputDer +=
+                            currentLayer.Neurons[j].Weight[i] *
+                            currentLayer.Neurons[j].InputDer;
                     }
 
                 }
@@ -167,35 +203,35 @@ namespace HundoNN
             for (int layerIndex = 1; layerIndex < layers.Count; layerIndex++)
             {
                 Layer currentLayer = layers[layerIndex];
-                for (int currentNeuronIndex = 0; currentNeuronIndex < currentLayer.neurons.Length; currentNeuronIndex++)
+                for (int currentNeuronIndex = 0; currentNeuronIndex < currentLayer.Neurons.Length; currentNeuronIndex++)
                 {
-                    Neuron neuron = currentLayer.neurons[currentNeuronIndex];
+                    Neuron neuron = currentLayer.Neurons[currentNeuronIndex];
                     //更新這個神經元的bias
-                    if (neuron.numAccumulatedDers > 0)
+                    if (neuron.NumAccumulatedDers > 0)
                     {
-                        neuron.bias -= learningRate * neuron.accInputDer / neuron.numAccumulatedDers;
-                        neuron.accInputDer = 0;
-                        neuron.numAccumulatedDers = 0;
+                        neuron.Bias -= learningRate * neuron.AccInputDer / neuron.NumAccumulatedDers;
+                        neuron.AccInputDer = 0;
+                        neuron.NumAccumulatedDers = 0;
                     }
                     //更新每個進入這個神經元的權重
-                    for (int i = 0; i < neuron.weight.Length; i++)
+                    for (int i = 0; i < neuron.Weight.Length; i++)
                     {
-                        double regulDer = _regularizationDerivative(neuron.weight[i]);
-                        if (neuron.weightNumAccumulatedDers[i] > 0)
+                        double regulDer = _regularizationDerivative(neuron.Weight[i]);
+                        if (neuron.WeightNumAccumulatedDers[i] > 0)
                         {
                             //用 E對w的微分調整權重
-                            neuron.weight[i] = neuron.weight[i] -
-                                (learningRate / neuron.weightNumAccumulatedDers[i]) * neuron.weightAccErrorDer[i];
+                            neuron.Weight[i] = neuron.Weight[i] -
+                                (learningRate / neuron.WeightNumAccumulatedDers[i]) * neuron.WeightAccErrorDer[i];
                             //根據正則化(Regularization)進一步更新權重
                             //目前沒有使用
-                            double newLinkWeight = neuron.weight[i] -
+                            double newLinkWeight = neuron.Weight[i] -
                                 (learningRate * regularizationRate) * regulDer;
 
-                            neuron.weight[i] = newLinkWeight;
+                            neuron.Weight[i] = newLinkWeight;
 
                             //用完清掉
-                            neuron.weightAccErrorDer[i] = 0;
-                            neuron.weightNumAccumulatedDers[i] = 0;
+                            neuron.WeightAccErrorDer[i] = 0;
+                            neuron.WeightNumAccumulatedDers[i] = 0;
                         }
                     }
                 }
@@ -207,7 +243,7 @@ namespace HundoNN
         /// </summary>
         /// <param name="vs"></param>
         /// <returns></returns>
-        public double[] Forward(params double[] vs)
+        public double[] FeedForward(params double[] vs)
         {
             for (int i = 0; i < layers.Count; i++)
             {
@@ -230,7 +266,7 @@ namespace HundoNN
         }
 
         /// <summary>
-        /// 取得誤差
+        /// 取得平均誤差
         /// </summary>
         /// <param name="TargetData"></param>
         /// <returns></returns>
@@ -240,18 +276,13 @@ namespace HundoNN
             for (int i = 0; i < TrainData.Count(); i++)
             {
                 //正向計算結果
-                double output = this.Forward(TrainData[i][0].ToArray())[0];
-                loss += _errorMap(output, TrainData[i][1][0]);
+                double[] output = FeedForward(TrainData[i][0].ToArray());
+                for (int j = 0; j < output.Length; j++)
+                {
+                    loss += _lossMap(output[j], TrainData[i][1][j]);
+                }
             }
             return loss / TrainData.Count();
-        }
-
-
-
-        public void SetErrorFunction(IError error)
-        {
-            _errorMap = error.Map;
-            _errorDerivative = error.Derivative;
         }
 
         /// <summary>
@@ -263,13 +294,14 @@ namespace HundoNN
         /// <param name="showPerEpoch"></param>
         public void Fit(double learningRate, uint batchSize, uint epoch, uint showPerEpoch)
         {
-
+            Random random = new Random();
             for (uint e = 0; e < epoch; e++)
             {
                 for (int i = 0; i < TrainData.Count; i++)
                 {
+                    TrainData.Sort((x,y)=>random.Next(-1,2));
                     //正向計算結果
-                    this.Forward(TrainData[i][0].ToArray());
+                    this.FeedForward(TrainData[i][0].ToArray());
                     //倒傳遞
                     this.Backward(TrainData[i][1].ToArray());
                     if ((e + 1) % batchSize == 0)
@@ -286,7 +318,10 @@ namespace HundoNN
         }
 
 
-
+        /// <summary>
+        /// 顯示
+        /// </summary>
+        /// <param name="ep"></param>
         private void Show(ulong ep)
         {
             Console.WriteLine($"Epoch {ep}: Loss {GetLoss().ToString("0.00000")}");
@@ -306,8 +341,8 @@ namespace HundoNN
             string[] lines = layerLines[0].Split(new string[] { "\r\n" }, StringSplitOptions.None);
             network._regularizationMap = typeof(IRegularization).GetMethod(lines[0]).CreateDelegate(typeof(RegularizationHandler), Regularization.Function) as RegularizationHandler;
             network._regularizationDerivative = typeof(IRegularization).GetMethod(lines[1]).CreateDelegate(typeof(RegularizationHandler), Regularization.Function) as RegularizationHandler;
-            network._errorMap = typeof(IError).GetMethod(lines[2]).CreateDelegate(typeof(ErrorHandler), Error.Function) as ErrorHandler;
-            network._errorDerivative = typeof(IError).GetMethod(lines[3]).CreateDelegate(typeof(ErrorHandler), Error.Function) as ErrorHandler;
+            network._lossMap = typeof(ILoss).GetMethod(lines[2]).CreateDelegate(typeof(LossHandler), Loss.Function) as LossHandler;
+            network._lossDerivative = typeof(ILoss).GetMethod(lines[3]).CreateDelegate(typeof(LossHandler), Loss.Function) as LossHandler;
             int len = int.Parse(lines[4]);
             //Layer layer = new Layer(lines[0]);
             for (int i = 1; i <= len; i++)
@@ -356,8 +391,8 @@ namespace HundoNN
             stringBuilder.AppendLine("Network");
             stringBuilder.AppendLine(_regularizationMap.Method.Name);
             stringBuilder.AppendLine(_regularizationDerivative.Method.Name);
-            stringBuilder.AppendLine(_errorMap.Method.Name);
-            stringBuilder.AppendLine(_errorDerivative.Method.Name);
+            stringBuilder.AppendLine(_lossMap.Method.Name);
+            stringBuilder.AppendLine(_lossDerivative.Method.Name);
             stringBuilder.AppendLine(layers.Count().ToString());
             for (int i = 0; i < layers.Count(); i++)
             {
@@ -383,6 +418,36 @@ namespace HundoNN
                 }
                 fileStream.Close();
             }
+        }
+
+
+
+        public Network(IRegularization regularization, ILoss loss)
+        {
+            _lossMap = loss.Map;
+            _lossDerivative = loss.Derivative;
+            _regularizationMap = regularization.Map;
+            _regularizationDerivative = regularization.Derivative;
+            layers = new List<Layer>();
+            TrainData = new List<List<List<double>>>();
+        }
+        public Network() : this(Regularization.Function.None, Loss.Function.MeanSquareError)
+        {
+        }
+
+        /// <summary>
+        /// Loss預設使用MSE
+        /// </summary>
+        /// <param name="regularization"></param>
+        public Network(IRegularization regularization) : this(regularization, Loss.Function.MeanSquareError)
+        {
+        }
+        /// <summary>
+        /// Regularization預設不使用
+        /// </summary>
+        /// <param name="loss"></param>
+        public Network(ILoss loss) : this(Regularization.Function.None, loss)
+        {
         }
     }
 }

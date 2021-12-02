@@ -56,14 +56,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NeuralNetwork\Functions\ActivationFunction.cs" />
-    <Compile Include="NeuralNetwork\Functions\ErrorFunction.cs" />
+    <Compile Include="NeuralNetwork\Functions\LossFunction.cs" />
     <Compile Include="NeuralNetwork\Functions\Functions.cs" />
     <Compile Include="NeuralNetwork\Functions\IActivationFunction.cs" />
-    <Compile Include="NeuralNetwork\Functions\IErrorFunction.cs" />
-    <Compile Include="NeuralNetwork\Functions\ILoss.cs" />
+    <Compile Include="NeuralNetwork\Functions\ILossFunction.cs" />
     <Compile Include="NeuralNetwork\Functions\INormalization.cs" />
     <Compile Include="NeuralNetwork\Functions\IRegularizationFunction.cs" />
-    <Compile Include="NeuralNetwork\Functions\LossFunction.cs" />
     <Compile Include="NeuralNetwork\Functions\Normalization.cs" />
     <Compile Include="NeuralNetwork\Layer.cs" />
     <Compile Include="NeuralNetwork\Network.cs" />
